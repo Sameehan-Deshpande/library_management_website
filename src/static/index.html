@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+    <div class="max-w-6xl mx-auto px-4 py-10">
+        <!-- Header -->
+        <header class="mb-8 flex items-center justify-between border-b border-slate-800 pb-5">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-emerald-400">Library Tracker</h1>
+                <p class="text-slate-400 text-sm mt-1">FastAPI + SQLAlchemy 2.0 Multi-Table API</p>
+            </div>
+            <a href="/docs" target="_blank" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg transition">
+                API Docs ↗
+            </a>
+        </header>
+
+        <!-- Error Banner -->
+        <div id="errorBanner" class="hidden mb-6 bg-rose-500/10 border border-rose-500/40 text-rose-300 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
+            <span id="errorText"></span>
+            <button onclick="hideError()" class="text-rose-400 hover:text-rose-200 font-bold ml-4 cursor-pointer">✕</button>
+        </div>
+
+        <!-- Forms Grid: Add Book & Borrow Book -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+            <!-- Add Book Form -->
+            <form id="bookForm" class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg">
+                <h2 class="text-lg font-semibold mb-4 text-slate-200">Add a New Book</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <input type="text" id="title" placeholder="Book Title" required
+                        class="bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
+                    <input type="text" id="author" placeholder="Author" required
+                        class="bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <select id="genre"
+                        class="bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
+                        <option value="fiction">Fiction</option>
+                        <option value="scifi">Sci-Fi</option>
+                        <option value="history">History</option>
+                        <option value="tech">Tech</option>
+                    </select>
+                    <input type="number" id="copies" value="1" min="0" placeholder="Copies" required
+                        class="bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <button type="submit"
+                    class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-5 py-2.5 rounded-lg transition cursor-pointer">
+                    + Add Book
+                </button>
+            </form>
+
+            <!-- Borrow Book Form -->
+            <form id="borrowForm" class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold mb-4 text-slate-200">Checkout a Book</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <input type="text" id="borrowerName" placeholder="Borrower Name" required
+                            class="bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                        <select id="bookSelect" required
+                            class="bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                            <option value="">Select a book...</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <button type="submit"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm px-5 py-2.5 rounded-lg transition cursor-pointer">
+                        Checkout Book
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Books Catalog -->
+        <div class="mb-12">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <h2 class="text-lg font-semibold text-slate-200">Book Catalog</h2>
+                <div class="flex items-center gap-3">
+                    <select id="filterGenre" onchange="loadBooks()"
+                        class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+                        <option value="">All Genres</option>
+                        <option value="fiction">Fiction</option>
+                        <option value="scifi">Sci-Fi</option>
+                        <option value="history">History</option>
+                        <option value="tech">Tech</option>
+                    </select>
+                    <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                        <input type="checkbox" id="filterAvailable" onchange="loadBooks()" class="accent-emerald-500">
+                        Available only
+                    </label>
+                </div>
+            </div>
+            <div id="booksGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            <p id="emptyBooks" class="text-slate-500 text-sm text-center py-8 hidden">No books found.</p>
+        </div>
+
+        <!-- Borrow Records -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-slate-200">Borrow Records</h2>
+                <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                    <input type="checkbox" id="filterActiveBorrows" onchange="loadBorrows()" class="accent-indigo-500">
+                    Active checkouts only
+                </label>
+            </div>
+            <div id="borrowsList" class="space-y-3"></div>
+            <p id="emptyBorrows" class="text-slate-500 text-sm text-center py-8 hidden">No borrow records yet.</p>
+        </div>
+    </div>
+
+    <script>
+        let booksMap = {};
+
+        function showError(msg) {
+            document.getElementById("errorText").textContent = msg;
+            document.getElementById("errorBanner").classList.remove("hidden");
+        }
+
+        function hideError() {
+            document.getElementById("errorBanner").classList.add("hidden");
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Load Books (GET /books/)
+        async function loadBooks() {
+            const genre = document.getElementById("filterGenre").value;
+            const availableOnly = document.getElementById("filterAvailable").checked;
+
+            const params = new URLSearchParams();
+            if (genre) params.append("genre", genre);
+            if (availableOnly) params.append("available_only", "true");
+
+            const res = await fetch(`/books/?${params.toString()}`);
+            const books = await res.json();
+
+            const grid = document.getElementById("booksGrid");
+            const empty = document.getElementById("emptyBooks");
+            const select = document.getElementById("bookSelect");
+
+            grid.innerHTML = "";
+            select.innerHTML = '<option value="">Select a book...</option>';
+            booksMap = {};
+
+            if (books.length === 0) {
+                empty.classList.remove("hidden");
+                return;
+            }
+            empty.classList.add("hidden");
+
+            books.forEach(book => {
+                booksMap[book.id] = book.title;
+
+                // Populate dropdown
+                const opt = document.createElement("option");
+                opt.value = book.id;
+                opt.textContent = `${book.title} (${book.available_copies} left)`;
+                opt.disabled = book.available_copies === 0;
+                select.appendChild(opt);
+
+                // Render card
+                const card = document.createElement("div");
+                card.className = "bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-1">
+                            <h3 class="font-semibold text-base text-slate-100">${escapeHtml(book.title)}</h3>
+                            <span class="text-xs bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full uppercase">
+                                ${escapeHtml(book.genre)}
+                            </span>
+                        </div>
+                        <p class="text-slate-400 text-xs mb-4">by ${escapeHtml(book.author)}</p>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-slate-800/80 pt-3">
+                        <span class="text-xs font-medium ${book.available_copies > 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${book.available_copies} ${book.available_copies === 1 ? 'copy' : 'copies'} available
+                        </span>
+                        <button onclick="deleteBook(${book.id})" class="text-xs text-rose-400 hover:text-rose-300 cursor-pointer">
+                            Delete
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Load Borrows (GET /borrows/)
+        async function loadBorrows() {
+            const activeOnly = document.getElementById("filterActiveBorrows").checked;
+            const url = activeOnly ? "/borrows/?active_only=true" : "/borrows/";
+            const res = await fetch(url);
+            const borrows = await res.json();
+
+            const list = document.getElementById("borrowsList");
+            const empty = document.getElementById("emptyBorrows");
+            list.innerHTML = "";
+
+            if (borrows.length === 0) {
+                empty.classList.remove("hidden");
+                return;
+            }
+            empty.classList.add("hidden");
+
+            borrows.forEach(record => {
+                const bookTitle = booksMap[record.book_id] || `Book #${record.book_id}`;
+                const row = document.createElement("div");
+                row.className = "bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 flex items-center justify-between";
+                row.innerHTML = `
+                    <div>
+                        <p class="text-sm font-medium text-slate-100">
+                            ${escapeHtml(record.borrower_name)}
+                            <span class="text-slate-500 font-normal">borrowed</span>
+                            <span class="text-indigo-300">${escapeHtml(bookTitle)}</span>
+                        </p>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            Checked out: ${new Date(record.borrowed_at).toLocaleString()}
+                        </p>
+                    </div>
+                    <div>
+                        ${record.returned
+                            ? '<span class="text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full">Returned</span>'
+                            : `<button onclick="returnBook(${record.id})" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-lg transition cursor-pointer">Return Book</button>`
+                        }
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        // Create Book (POST /books/)
+        document.getElementById("bookForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            hideError();
+            const res = await fetch("/books/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: document.getElementById("title").value,
+                    author: document.getElementById("author").value,
+                    genre: document.getElementById("genre").value,
+                    available_copies: parseInt(document.getElementById("copies").value, 10)
+                })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                showError(err.detail || "Failed to add book");
+                return;
+            }
+            e.target.reset();
+            await refreshAll();
+        });
+
+        // Borrow Book (POST /borrows/)
+        document.getElementById("borrowForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            hideError();
+            const res = await fetch("/borrows/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    borrower_name: document.getElementById("borrowerName").value,
+                    book_id: parseInt(document.getElementById("bookSelect").value, 10)
+                })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                showError(err.detail || "Failed to checkout book");
+                return;
+            }
+            e.target.reset();
+            await refreshAll();
+        });
+
+        // Return Book (POST /borrows/{id}/return)
+        async function returnBook(borrowId) {
+            hideError();
+            const res = await fetch(`/borrows/${borrowId}/return`, { method: "POST" });
+            if (!res.ok) {
+                const err = await res.json();
+                showError(err.detail || "Failed to return book");
+                return;
+            }
+            await refreshAll();
+        }
+
+        // Delete Book (DELETE /books/{id})
+        async function deleteBook(bookId) {
+            hideError();
+            const res = await fetch(`/books/${bookId}`, { method: "DELETE" });
+            if (!res.ok) {
+                const err = await res.json();
+                showError(err.detail || "Cannot delete book");
+                return;
+            }
+            await refreshAll();
+        }
+
+        async function refreshAll() {
+            await loadBooks();
+            await loadBorrows();
+        }
+
+        refreshAll();
+    </script>
+</body>
+</html>
